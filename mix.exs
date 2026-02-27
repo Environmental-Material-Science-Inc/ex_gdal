@@ -9,7 +9,11 @@ defmodule ExGdal.MixProject do
       version: @version,
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      description: description(),
+      package: package(),
+      name: "ExGdal",
+      source_url: "https://github.com/Environmental-Material-Science-Inc/ex_gdal"
     ]
   end
 
@@ -17,6 +21,18 @@ defmodule ExGdal.MixProject do
     [
       extra_applications: [:logger]
     ]
+  end
+
+  defp description() do
+    "Elixir bindings to https://gdal.org/en/stable/ via https://github.com/georust/gdal and https://github.com/rusterlium/rustler"
+  end
+
+  defp package() do
+    %{
+      files: ~w(lib priv native .formatter.exs mix.exs README.md LICENSE.md),
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/Environmental-Material-Science-Inc/ex_gdal"}
+    }
   end
 
   defp deps do
