@@ -14,6 +14,8 @@ defmodule ExGdal do
   """
   @spec open(String.t()) :: {:ok, Dataset.t()} | {:error, String.t()}
   def open(path) do
+    path = Path.expand(path)
+
     with {:ok, ref} <- Native.gdal_open(path),
          {:ok, count} <- Native.gdal_raster_count(ref),
          {:ok, size} <- Native.gdal_raster_size(ref),
