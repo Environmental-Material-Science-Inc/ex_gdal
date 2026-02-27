@@ -38,7 +38,8 @@ defmodule ExGdal.MixProject do
   defp deps do
     [
       {:rustler, "~> 0.36.0", runtime: false},
-      {:rustler_precompiled, "~> 0.8"}
+      {:rustler_precompiled, "~> 0.8"},
+      {:ex_doc, "~> 0.14", only: :dev, runtime: false}
     ]
   end
 end
