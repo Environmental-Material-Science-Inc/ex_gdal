@@ -246,6 +246,40 @@ fn gdal_metadata_item(
 }
 
 // ---------------------------------------------------------------------------
+// NIF: metadata_domains — list all metadata domain names
+// ---------------------------------------------------------------------------
+#[rustler::nif]
+fn gdal_metadata_domains(resource: ResourceArc<DatasetResource>) -> Result<Vec<String>, String> {
+    let ds = resource.inner.lock().map_err(|e| format!("{e}"))?;
+    Ok(ds.metadata_domains())
+}
+
+// ---------------------------------------------------------------------------
+// NIF: metadata_domain — all "Key=Value" entries for a domain
+// ---------------------------------------------------------------------------
+#[rustler::nif]
+fn gdal_metadata_domain(
+    resource: ResourceArc<DatasetResource>,
+    domain: String,
+) -> Result<Option<Vec<String>>, String> {
+    let ds = resource.inner.lock().map_err(|e| format!("{e}"))?;
+    Ok(ds.metadata_domain(&domain))
+}
+
+// ---------------------------------------------------------------------------
+// NIF: band_description — the description string for a band (1-based index)
+// ---------------------------------------------------------------------------
+#[rustler::nif]
+fn gdal_band_description(
+    resource: ResourceArc<DatasetResource>,
+    band_idx: usize,
+) -> Result<String, String> {
+    let ds = resource.inner.lock().map_err(|e| format!("{e}"))?;
+    let band = ds.rasterband(band_idx).map_err(gdal_err_to_string)?;
+    band.description().map_err(gdal_err_to_string)
+}
+
+// ---------------------------------------------------------------------------
 // NIF: driver_name
 // ---------------------------------------------------------------------------
 #[rustler::nif]

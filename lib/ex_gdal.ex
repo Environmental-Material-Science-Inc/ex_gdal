@@ -109,6 +109,56 @@ defmodule ExGdal do
     Native.gdal_metadata_item(ref, key, domain)
   end
 
+  @doc """
+  Lists all metadata domain names present on the dataset.
+
+  The default domain is represented by `""`.
+  """
+  @spec metadata_domains(Dataset.t()) :: {:ok, [String.t()]} | {:error, String.t()}
+  def metadata_domains(%Dataset{ref: ref}) do
+    Native.gdal_metadata_domains(ref)
+  end
+
+  @doc """
+  Returns all metadata entries for a domain as `"Key=Value"` strings.
+
+  Returns `{:ok, nil}` if the domain does not exist.
+  """
+  @spec metadata_domain(Dataset.t(), String.t()) :: {:ok, [String.t()] | nil} | {:error, String.t()}
+  def metadata_domain(%Dataset{ref: ref}, domain \\ "") do
+    Native.gdal_metadata_domain(ref, domain)
+  end
+
+  @doc """
+  Returns the description string for a band (1-based index).
+
+  For concentration rasters produced by PlumeFutures, this is
+  the ISO 8601 timestamp of the time step.
+  """
+  @spec band_description(Dataset.t(), pos_integer()) :: {:ok, String.t()} | {:error, String.t()}
+  def band_description(%Dataset{ref: ref}, band_idx) do
+    Native.gdal_band_description(ref, band_idx)
+  end
+
+  @doc """
+  Returns all band descriptions as a list of strings.
+  """
+  @spec band_descriptions(Dataset.t()) :: {:ok, [String.t()]} | {:error, String.t()}
+  def band_descriptions(%Dataset{raster_count: count, ref: ref}) do
+    results =
+      Enum.reduce_while(1..count, [], fn i, acc ->
+        case Native.gdal_band_description(ref, i) do
+          {:ok, desc} -> {:cont, [desc | acc]}
+          {:error, _} = err -> {:halt, err}
+        end
+      end)
+
+    case results do
+      {:error, _} = err -> err
+      list when is_list(list) -> {:ok, Enum.reverse(list)}
+    end
+  end
+
   @doc "Returns the short driver name (e.g. `\"GTiff\"`)."
   @spec driver_name(Dataset.t()) :: {:ok, String.t()} | {:error, String.t()}
   def driver_name(%Dataset{driver: driver}), do: {:ok, driver}
