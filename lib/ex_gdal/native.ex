@@ -1,7 +1,21 @@
 defmodule ExGdal.Native do
   @moduledoc false
 
-  use Rustler, otp_app: :ex_gdal, crate: "ex_gdal_nif"
+  version = Mix.Project.config()[:version]
+
+  use RustlerPrecompiled,
+    otp_app: :ex_gdal,
+    crate: "ex_gdal_nif",
+    base_url:
+      "https://github.com/Environmental-Material-Science-Inc/ex_gdal/releases/download/v#{version}",
+    version: version,
+    force_build: System.get_env("EXGDAL_BUILD") in ["1", "true"],
+    targets: [
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu",
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin"
+    ]
 
   def gdal_open(_path), do: :erlang.nif_error(:nif_not_loaded)
   def gdal_raster_count(_resource), do: :erlang.nif_error(:nif_not_loaded)

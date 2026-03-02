@@ -11,3 +11,5 @@ crate-type = ["cdylib"]
 [dependencies]
 rustler = "0.36"
 gdal = { git = "https://github.com/Environmental-Material-Science-Inc/gdal", branch = "master" }
+gdal-sys = { git = "https://github.com/Environmental-Material-Science-Inc/gdal", branch = "master", features = ["bundled"] }
+gdal-src = { git = "https://github.com/Environmental-Material-Science-Inc/gdal", branch = "master", features = ["internal_drivers"] }

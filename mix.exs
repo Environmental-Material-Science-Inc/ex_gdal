@@ -1,7 +1,7 @@
 defmodule ExGdal.MixProject do
   use Mix.Project
 
-  @version "0.3.0"
+  @version "0.4.0"
 
   def project do
     [
@@ -29,7 +29,7 @@ defmodule ExGdal.MixProject do
 
   defp package() do
     %{
-      files: ~w(lib priv native .formatter.exs mix.exs README.md LICENSE.md),
+      files: ~w(lib priv native .formatter.exs mix.exs README.md LICENSE.md checksum-Elixir.ExGdal.Native.exs),
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/Environmental-Material-Science-Inc/ex_gdal"}
     }
@@ -37,7 +37,7 @@ defmodule ExGdal.MixProject do
 
   defp deps do
     [
-      {:rustler, "~> 0.36.0", runtime: false},
+      {:rustler, "~> 0.36.0", optional: true},
       {:rustler_precompiled, "~> 0.8"},
       {:ex_doc, "~> 0.14", only: :dev, runtime: false}
     ]
