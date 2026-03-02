@@ -1,8 +1,11 @@
 use std::sync::Mutex;
 
+use gdal::cpl::CslStringList;
 use gdal::raster::GdalDataType;
-use gdal::{Dataset, Metadata};
-use rustler::{Atom, Binary, Env, NewBinary, ResourceArc};
+use gdal::raster::processing::contour::contour_generate;
+use gdal::vector::{LayerAccess, LayerOptions, OGRFieldType, OGRwkbGeometryType};
+use gdal::{Dataset, DriverManager, Metadata};
+use rustler::{Atom, Binary, Env, NewBinary, NifMap, ResourceArc};
 
 mod atoms {
     rustler::atoms! {
@@ -286,6 +289,168 @@ fn gdal_band_description(
 fn gdal_driver_name(resource: ResourceArc<DatasetResource>) -> Result<String, String> {
     let ds = resource.inner.lock().map_err(|e| format!("{e}"))?;
     Ok(ds.driver().short_name())
+}
+
+// ---------------------------------------------------------------------------
+// NIF: contours
+// ---------------------------------------------------------------------------
+#[derive(NifMap)]
+struct ContourFeature<'a> {
+    id: i64,
+    level: f64,
+    level_min: Option<f64>,
+    level_max: Option<f64>,
+    wkb: Binary<'a>,
+}
+
+#[rustler::nif(schedule = "DirtyIo")]
+fn gdal_contours<'a>(
+    env: Env<'a>,
+    resource: ResourceArc<DatasetResource>,
+    band_idx: usize,
+    interval: Option<f64>,
+    base: f64,
+    fixed_levels: Vec<f64>,
+    polygonize: bool,
+    nodata: Option<f64>,
+) -> Result<Vec<ContourFeature<'a>>, String> {
+    let ds = resource.inner.lock().map_err(|e| format!("{e}"))?;
+    let band = ds.rasterband(band_idx).map_err(gdal_err_to_string)?;
+
+    // 1. Create in-memory vector dataset + layer
+    let mem_driver =
+        DriverManager::get_driver_by_name("Memory").map_err(gdal_err_to_string)?;
+    let mut mem_ds = mem_driver
+        .create_vector_only("")
+        .map_err(gdal_err_to_string)?;
+
+    let geom_type = if polygonize {
+        OGRwkbGeometryType::wkbMultiPolygon
+    } else {
+        OGRwkbGeometryType::wkbLineString
+    };
+    let mut layer = mem_ds
+        .create_layer(LayerOptions {
+            name: "contours",
+            ty: geom_type,
+            ..Default::default()
+        })
+        .map_err(gdal_err_to_string)?;
+
+    // 2. Define fields
+    if polygonize {
+        layer
+            .create_defn_fields(&[
+                ("ID", OGRFieldType::OFTInteger),
+                ("ELEV_MIN", OGRFieldType::OFTReal),
+                ("ELEV_MAX", OGRFieldType::OFTReal),
+            ])
+            .map_err(gdal_err_to_string)?;
+    } else {
+        layer
+            .create_defn_fields(&[
+                ("ID", OGRFieldType::OFTInteger),
+                ("ELEV", OGRFieldType::OFTReal),
+            ])
+            .map_err(gdal_err_to_string)?;
+    }
+
+    // 3. Build contour options
+    let mut opts = CslStringList::new();
+    if !fixed_levels.is_empty() {
+        let s = fixed_levels
+            .iter()
+            .map(|l| l.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        opts.add_string(&format!("FIXED_LEVELS={s}"))
+            .map_err(|e| format!("{e}"))?;
+    } else if let Some(iv) = interval {
+        opts.add_string(&format!("LEVEL_INTERVAL={iv}"))
+            .map_err(|e| format!("{e}"))?;
+        opts.add_string(&format!("LEVEL_BASE={base}"))
+            .map_err(|e| format!("{e}"))?;
+    }
+    if polygonize {
+        opts.add_string("POLYGONIZE=YES")
+            .map_err(|e| format!("{e}"))?;
+        opts.add_string("ELEV_FIELD_MIN=ELEV_MIN")
+            .map_err(|e| format!("{e}"))?;
+        opts.add_string("ELEV_FIELD_MAX=ELEV_MAX")
+            .map_err(|e| format!("{e}"))?;
+    } else {
+        opts.add_string("ELEV_FIELD=ELEV")
+            .map_err(|e| format!("{e}"))?;
+    }
+    opts.add_string("ID_FIELD=ID")
+        .map_err(|e| format!("{e}"))?;
+    if let Some(nd) = nodata {
+        opts.add_string(&format!("NODATA={nd}"))
+            .map_err(|e| format!("{e}"))?;
+    }
+
+    // 4. Generate contours
+    contour_generate(&band, &layer, &opts).map_err(gdal_err_to_string)?;
+
+    // 5. Read features and extract WKB + field values
+    let mut results = Vec::new();
+    for feature in layer.features() {
+        let geom = match feature.geometry() {
+            Some(g) => g,
+            None => continue,
+        };
+        let wkb_bytes = geom.wkb().map_err(gdal_err_to_string)?;
+
+        let id_idx = feature.field_index("ID").map_err(gdal_err_to_string)?;
+        let id = feature
+            .field(id_idx)
+            .ok()
+            .flatten()
+            .and_then(|v| v.into_int())
+            .unwrap_or(0) as i64;
+
+        let (level, level_min, level_max) = if polygonize {
+            let min_idx = feature
+                .field_index("ELEV_MIN")
+                .map_err(gdal_err_to_string)?;
+            let max_idx = feature
+                .field_index("ELEV_MAX")
+                .map_err(gdal_err_to_string)?;
+            let min_val = feature
+                .field(min_idx)
+                .ok()
+                .flatten()
+                .and_then(|v| v.into_real());
+            let max_val = feature
+                .field(max_idx)
+                .ok()
+                .flatten()
+                .and_then(|v| v.into_real());
+            (min_val.unwrap_or(0.0), min_val, max_val)
+        } else {
+            let elev_idx = feature.field_index("ELEV").map_err(gdal_err_to_string)?;
+            let elev = feature
+                .field(elev_idx)
+                .ok()
+                .flatten()
+                .and_then(|v| v.into_real())
+                .unwrap_or(0.0);
+            (elev, None, None)
+        };
+
+        let mut binary = NewBinary::new(env, wkb_bytes.len());
+        binary.as_mut_slice().copy_from_slice(&wkb_bytes);
+
+        results.push(ContourFeature {
+            id,
+            level,
+            level_min,
+            level_max,
+            wkb: binary.into(),
+        });
+    }
+
+    Ok(results)
 }
 
 // ---------------------------------------------------------------------------

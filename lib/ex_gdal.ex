@@ -162,4 +162,51 @@ defmodule ExGdal do
   @doc "Returns the short driver name (e.g. `\"GTiff\"`)."
   @spec driver_name(Dataset.t()) :: {:ok, String.t()} | {:error, String.t()}
   def driver_name(%Dataset{driver: driver}), do: {:ok, driver}
+
+  @doc """
+  Extracts contour geometries from a raster band.
+
+  Returns a list of contour features, each containing a WKB geometry binary
+  and elevation metadata. Use either `:interval` for regularly-spaced contours
+  or `:levels` for specific threshold values.
+
+  ## Options
+
+    * `:interval` - contour interval (mutually exclusive with `:levels`)
+    * `:base` - base contour level (default `0.0`, used with `:interval`)
+    * `:levels` - explicit list of contour levels as floats
+    * `:polygonize` - if `true`, produce filled polygons instead of linestrings
+      (default `true`)
+    * `:nodata` - override the band's nodata value
+
+  ## Examples
+
+      # Fixed threshold levels
+      {:ok, features} = ExGdal.contours(ds, 1,
+        levels: [0.005, 0.05, 0.5],
+        polygonize: true
+      )
+
+      # Regular interval contours
+      {:ok, features} = ExGdal.contours(ds, 1, interval: 10.0, base: 0.0)
+
+  Each feature is a map with keys:
+
+    * `:id` - integer feature ID
+    * `:level` - contour elevation
+    * `:level_min` - lower bound of contour band (polygon mode)
+    * `:level_max` - upper bound of contour band (polygon mode)
+    * `:wkb` - geometry as WKB binary
+  """
+  @spec contours(Dataset.t(), pos_integer(), keyword()) ::
+          {:ok, [map()]} | {:error, String.t()}
+  def contours(%Dataset{ref: ref}, band_idx, opts \\ []) do
+    interval = Keyword.get(opts, :interval)
+    base = Keyword.get(opts, :base, 0.0)
+    levels = Keyword.get(opts, :levels, [])
+    polygonize = Keyword.get(opts, :polygonize, true)
+    nodata = Keyword.get(opts, :nodata)
+
+    Native.gdal_contours(ref, band_idx, interval, base, levels, polygonize, nodata)
+  end
 end

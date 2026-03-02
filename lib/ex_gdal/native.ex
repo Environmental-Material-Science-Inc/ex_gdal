@@ -18,4 +18,7 @@ defmodule ExGdal.Native do
   def gdal_metadata_domain(_resource, _domain), do: :erlang.nif_error(:nif_not_loaded)
   def gdal_band_description(_resource, _band_idx), do: :erlang.nif_error(:nif_not_loaded)
   def gdal_driver_name(_resource), do: :erlang.nif_error(:nif_not_loaded)
+
+  def gdal_contours(_resource, _band_idx, _interval, _base, _fixed_levels, _polygonize, _nodata),
+    do: :erlang.nif_error(:nif_not_loaded)
 end

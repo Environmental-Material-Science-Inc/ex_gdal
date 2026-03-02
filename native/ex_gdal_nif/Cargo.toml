@@ -10,4 +10,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rustler = "0.36"
-gdal = "0.19"
+gdal = { git = "https://github.com/Environmental-Material-Science-Inc/gdal", branch = "master" }

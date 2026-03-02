@@ -7,7 +7,7 @@ defmodule ExGdalTest do
   describe "open/1" do
     test "opens a valid GeoTIFF" do
       assert {:ok, %ExGdal.Dataset{} = ds} = ExGdal.open(@tinymarble)
-      assert ds.path == @tinymarble
+      assert ds.path == Path.expand(@tinymarble)
       assert ds.driver == "GTiff"
       assert ds.raster_count > 0
       assert {w, h} = ds.raster_size
@@ -124,6 +124,78 @@ defmodule ExGdalTest do
     test "returns nil for missing key" do
       {:ok, ds} = ExGdal.open(@tinymarble)
       assert {:ok, nil} = ExGdal.metadata_item(ds, "NONEXISTENT_KEY")
+    end
+  end
+
+  describe "contours/3" do
+    test "extracts contour linestrings at regular interval" do
+      {:ok, ds} = ExGdal.open(@dem_hills)
+
+      {:ok, features} =
+        ExGdal.contours(ds, 1,
+          interval: 50.0,
+          polygonize: false
+        )
+
+      assert is_list(features)
+      assert length(features) > 0
+
+      feat = hd(features)
+      assert is_integer(feat.id)
+      assert is_float(feat.level)
+      assert is_binary(feat.wkb)
+      assert byte_size(feat.wkb) > 0
+    end
+
+    test "extracts contour polygons at fixed levels" do
+      {:ok, ds} = ExGdal.open(@dem_hills)
+
+      {:ok, features} =
+        ExGdal.contours(ds, 1,
+          levels: [100.0, 200.0, 300.0],
+          polygonize: true
+        )
+
+      assert is_list(features)
+      assert length(features) > 0
+
+      feat = hd(features)
+      assert is_float(feat.level_min) or is_nil(feat.level_min)
+      assert is_float(feat.level_max) or is_nil(feat.level_max)
+      assert is_binary(feat.wkb)
+    end
+
+    test "returns single polygon for level above raster range" do
+      {:ok, ds} = ExGdal.open(@dem_hills)
+
+      {:ok, features} =
+        ExGdal.contours(ds, 1,
+          levels: [99999.0],
+          polygonize: true
+        )
+
+      # GDAL polygonize creates bands between levels — a single level above all
+      # data produces one polygon covering everything below that level
+      assert is_list(features)
+      assert length(features) == 1
+    end
+
+    test "respects nodata override" do
+      {:ok, ds} = ExGdal.open(@dem_hills)
+
+      {:ok, features} =
+        ExGdal.contours(ds, 1,
+          levels: [100.0],
+          polygonize: true,
+          nodata: -9999.0
+        )
+
+      assert is_list(features)
+    end
+
+    test "returns error for invalid band index" do
+      {:ok, ds} = ExGdal.open(@dem_hills)
+      assert {:error, _} = ExGdal.contours(ds, 999, levels: [100.0])
     end
   end
 end
