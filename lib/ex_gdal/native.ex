@@ -15,8 +15,7 @@ defmodule ExGdal.Native do
       "x86_64-unknown-linux-gnu",
       "aarch64-unknown-linux-gnu",
       "x86_64-apple-darwin",
-      "aarch64-apple-darwin",
-      "x86_64-pc-windows-msvc"
+      "aarch64-apple-darwin"
     ]
 
   def gdal_open(_path), do: :erlang.nif_error(:nif_not_loaded)
