@@ -15,22 +15,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        nif: ["2.16", "2.17"]
+        nif: ["2.16"]
         job:
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
-          - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04, use-cross: true }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-24.04-arm }
           - { target: x86_64-apple-darwin, os: macos-13 }
           - { target: aarch64-apple-darwin, os: macos-14 }
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get version from tag
+        id: tag
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
       - name: Build precompiled NIF
         uses: philss/rustler-precompiled-action@v1.1.4
         with:
           project-name: ex_gdal_nif
           project-dir: native/ex_gdal_nif
-          project-version: ${{ github.ref_name }}
+          project-version: ${{ steps.tag.outputs.version }}
           target: ${{ matrix.job.target }}
           nif-version: ${{ matrix.nif }}
           use-cross: ${{ matrix.job.use-cross && 'true' || '' }}
