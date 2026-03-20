@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 rustler = { version = "0.36", default-features = false, features = ["derive"] }
 gdal = { git = "https://github.com/Environmental-Material-Science-Inc/gdal", branch = "master" }
 gdal-sys = { git = "https://github.com/Environmental-Material-Science-Inc/gdal", branch = "master", features = ["bundled"] }
-gdal-src = { git = "https://github.com/Environmental-Material-Science-Inc/gdal", branch = "master", features = ["internal_drivers"] }
+gdal-src = { git = "https://github.com/Environmental-Material-Science-Inc/gdal", branch = "master", features = ["internal_drivers", "zstd"] }
 
 [features]
 default = ["nif_version_2_16"]
