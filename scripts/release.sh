@@ -65,13 +65,30 @@ fi
 echo "==> Watching workflow run $RUN_ID"
 gh run watch "$RUN_ID" --repo "$REPO" --exit-status
 
-# 4. Generate checksums
-echo "==> Generating checksums"
-mix rustler_precompiled.download ExGdal.Native --all --print
+# 4. Generate checksums from release assets
+echo "==> Downloading release assets and generating checksums"
+CHECKSUM_FILE="checksum-Elixir.ExGdal.Native.exs"
+TMPDIR=$(mktemp -d)
+gh release download "$TAG" --repo "$REPO" --pattern "*.tar.gz" --dir "$TMPDIR"
+
+{
+  echo "%{"
+  for f in "$TMPDIR"/*.tar.gz; do
+    name=$(basename "$f")
+    hash=$(sha256sum "$f" | cut -d' ' -f1)
+    echo "  \"${name}\" => \"sha256:${hash}\","
+  done
+  echo "}"
+} > "$CHECKSUM_FILE"
+
+rm -rf "$TMPDIR"
+
+echo "==> Checksums written to $CHECKSUM_FILE:"
+cat "$CHECKSUM_FILE"
 
 # 5. Publish to Hex
 echo ""
-echo "==> Checksums generated. Review, then publish:"
+echo "==> Review checksums above, then publish:"
 echo ""
 echo "    mix hex.publish"
 echo ""
