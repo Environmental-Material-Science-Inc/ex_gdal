@@ -177,7 +177,7 @@ dependencies = [
 [[package]]
 name = "gdal"
 version = "0.19.0"
-source = "git+https://github.com/Environmental-Material-Science-Inc/gdal?branch=master#bf0864bbc2d901038b4554603941c83cd8526e52"
+source = "git+https://github.com/Environmental-Material-Science-Inc/gdal?branch=master#c8e35029fdc82bf4301c75cd82692efaf671a868"
 dependencies = [
  "bitflags",
  "chrono",
@@ -190,9 +190,10 @@ dependencies = [
 [[package]]
 name = "gdal-src"
 version = "0.3.0+3.12.1"
-source = "git+https://github.com/Environmental-Material-Science-Inc/gdal?branch=master#bf0864bbc2d901038b4554603941c83cd8526e52"
+source = "git+https://github.com/Environmental-Material-Science-Inc/gdal?branch=master#c8e35029fdc82bf4301c75cd82692efaf671a868"
 dependencies = [
  "cmake",
+ "libsqlite3-sys",
  "link-cplusplus",
  "proj-sys",
  "zstd-sys",
@@ -201,7 +202,7 @@ dependencies = [
 [[package]]
 name = "gdal-sys"
 version = "0.12.0"
-source = "git+https://github.com/Environmental-Material-Science-Inc/gdal?branch=master#bf0864bbc2d901038b4554603941c83cd8526e52"
+source = "git+https://github.com/Environmental-Material-Science-Inc/gdal?branch=master#c8e35029fdc82bf4301c75cd82692efaf671a868"
 dependencies = [
  "gdal-src",
  "pkg-config",
@@ -311,6 +312,7 @@ version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "133c182a6a2c87864fe97778797e46c7e999672690dc9fa3ee8e241aa4a9c13f"
 dependencies = [
+ "cc",
  "pkg-config",
  "vcpkg",
 ]
