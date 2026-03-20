@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "Usage: $0 MAJOR|MINOR|PATCH"
+  exit 1
+}
+
+[[ $# -eq 1 ]] || usage
+
+BUMP="${1^^}" # uppercase
+[[ "$BUMP" =~ ^(MAJOR|MINOR|PATCH)$ ]] || usage
+
+MIXFILE="mix.exs"
+
+# Extract current version
+CURRENT=$(grep -oP '@version "\K[0-9]+\.[0-9]+\.[0-9]+' "$MIXFILE")
+IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+case "$BUMP" in
+  MAJOR) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+  MINOR) MINOR=$((MINOR + 1)); PATCH=0 ;;
+  PATCH) PATCH=$((PATCH + 1)) ;;
+esac
+
+NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+TAG="v${NEW_VERSION}"
+
+echo "==> Bumping version: $CURRENT -> $NEW_VERSION"
+
+# 1. Update version in mix.exs
+sed -i "s/@version \"$CURRENT\"/@version \"$NEW_VERSION\"/" "$MIXFILE"
+
+# 2. Commit, tag, push
+# Ensure there are no other uncommitted changes that would be left out
+if [[ -n "$(git diff --name-only)" || -n "$(git diff --cached --name-only)" ]]; then
+  echo "ERROR: There are uncommitted changes beyond the version bump."
+  echo "Please commit or stash them before releasing."
+  git checkout -- "$MIXFILE"
+  exit 1
+fi
+git add "$MIXFILE"
+git commit -m "Bump version to $NEW_VERSION"
+git tag "$TAG"
+
+echo "==> Pushing commit and tag $TAG"
+git push origin HEAD --tags
+
+# 3. Wait for CI to build precompiled NIFs
+echo "==> Waiting for CI workflow to complete for $TAG..."
+REPO="Environmental-Material-Science-Inc/ex_gdal"
+
+# Wait for the workflow run to appear
+for i in $(seq 1 30); do
+  RUN_ID=$(gh run list --repo "$REPO" --branch "$TAG" --workflow "Build precompiled NIFs" --json databaseId,status -q '.[0].databaseId' 2>/dev/null || true)
+  [[ -n "$RUN_ID" ]] && break
+  echo "  waiting for workflow run to start... (attempt $i)"
+  sleep 10
+done
+
+if [[ -z "${RUN_ID:-}" ]]; then
+  echo "ERROR: CI workflow did not start after 5 minutes. Check GitHub Actions."
+  exit 1
+fi
+
+echo "==> Watching workflow run $RUN_ID"
+gh run watch "$RUN_ID" --repo "$REPO" --exit-status
+
+# 4. Generate checksums
+echo "==> Generating checksums"
+mix rustler_precompiled.download ExGdal.Native --all --print
+
+# 5. Publish to Hex
+echo ""
+echo "==> Checksums generated. Review, then publish:"
+echo ""
+echo "    mix hex.publish"
+echo ""

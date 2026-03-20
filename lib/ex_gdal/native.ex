@@ -10,6 +10,7 @@ defmodule ExGdal.Native do
       "https://github.com/Environmental-Material-Science-Inc/ex_gdal/releases/download/v#{version}",
     version: version,
     force_build: System.get_env("EXGDAL_BUILD") in ["1", "true"],
+    nif_versions: ["2.16", "2.17"],
     targets: [
       "x86_64-unknown-linux-gnu",
       "aarch64-unknown-linux-gnu",

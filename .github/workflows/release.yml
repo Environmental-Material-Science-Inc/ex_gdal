@@ -10,24 +10,17 @@ permissions:
 
 jobs:
   build_nif:
-    name: NIF ${{ matrix.nif }} - ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+    name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }}
+    runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-22.04
-            nif: "2.17"
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-22.04
-            nif: "2.17"
-          - target: x86_64-apple-darwin
-            os: macos-13
-            nif: "2.17"
-          - target: aarch64-apple-darwin
-            os: macos-14
-            nif: "2.17"
+        nif: ["2.16", "2.17"]
+        job:
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04, use-cross: true }
+          - { target: x86_64-apple-darwin, os: macos-13 }
+          - { target: aarch64-apple-darwin, os: macos-14 }
 
     steps:
       - uses: actions/checkout@v4
@@ -38,14 +31,14 @@ jobs:
           project-name: ex_gdal_nif
           project-dir: native/ex_gdal_nif
           project-version: ${{ github.ref_name }}
-          target: ${{ matrix.target }}
+          target: ${{ matrix.job.target }}
           nif-version: ${{ matrix.nif }}
-          use-cross: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
+          use-cross: ${{ matrix.job.use-cross && 'true' || '' }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nif-${{ matrix.target }}-${{ matrix.nif }}
+          name: nif-${{ matrix.job.target }}-${{ matrix.nif }}
           path: priv/native/*
           if-no-files-found: error
 
