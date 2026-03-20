@@ -13,6 +13,12 @@ BUMP="${1^^}" # uppercase
 
 MIXFILE="mix.exs"
 
+# Ensure there are no uncommitted changes that would be left out of the release
+if [[ -n "$(git diff --name-only)" || -n "$(git diff --cached --name-only)" ]]; then
+  echo "ERROR: There are uncommitted changes. Please commit or stash them before releasing."
+  exit 1
+fi
+
 # Extract current version
 CURRENT=$(grep -oP '@version "\K[0-9]+\.[0-9]+\.[0-9]+' "$MIXFILE")
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
@@ -32,13 +38,6 @@ echo "==> Bumping version: $CURRENT -> $NEW_VERSION"
 sed -i "s/@version \"$CURRENT\"/@version \"$NEW_VERSION\"/" "$MIXFILE"
 
 # 2. Commit, tag, push
-# Ensure there are no other uncommitted changes that would be left out
-if [[ -n "$(git diff --name-only)" || -n "$(git diff --cached --name-only)" ]]; then
-  echo "ERROR: There are uncommitted changes beyond the version bump."
-  echo "Please commit or stash them before releasing."
-  git checkout -- "$MIXFILE"
-  exit 1
-fi
 git add "$MIXFILE"
 git commit -m "Bump version to $NEW_VERSION"
 git tag "$TAG"
