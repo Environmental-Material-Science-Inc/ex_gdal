@@ -24,7 +24,15 @@ jobs:
           - { target: x86_64-pc-windows-msvc, os: windows-2022 }
 
     steps:
+      - name: Enable long paths (Windows)
+        if: runner.os == 'Windows'
+        run: git config --system core.longpaths true
+
       - uses: actions/checkout@v4
+
+      - name: Install Rust target (cross-compile)
+        if: matrix.job.target == 'x86_64-apple-darwin' && runner.arch == 'ARM64'
+        run: rustup target add x86_64-apple-darwin
 
       - name: Get version from tag
         id: tag
