@@ -29,7 +29,8 @@ defmodule ExGdal.MixProject do
 
   defp package() do
     %{
-      files: ~w(lib native/ex_gdal_nif/.cargo native/ex_gdal_nif/src native/ex_gdal_nif/Cargo* native/ex_gdal_nif/Cross.toml .formatter.exs mix.exs README.md LICENSE.md checksum-Elixir.ExGdal.Native.exs),
+      files:
+        ~w(lib native/ex_gdal_nif/.cargo native/ex_gdal_nif/src native/ex_gdal_nif/Cargo* native/ex_gdal_nif/Cross.toml .formatter.exs mix.exs README.md LICENSE.md checksum-Elixir.ExGdal.Native.exs),
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/Environmental-Material-Science-Inc/ex_gdal"}
     }
