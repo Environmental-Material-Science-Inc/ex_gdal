@@ -36,6 +36,7 @@ jobs:
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y musl-tools
           rustup target add ${{ matrix.job.target }}
+          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS=-C target-feature=-crt-static" >> $GITHUB_ENV
 
       - name: Get version from tag
         id: tag
