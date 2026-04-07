@@ -57,17 +57,10 @@ jobs:
           files: ${{ steps.build.outputs.file-path }}
 
   build_musl_nif:
-    name: NIF ${{ matrix.nif }} - ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+    name: NIF 2.16 - x86_64-unknown-linux-musl
+    runs-on: ubuntu-22.04
     container:
       image: rust:alpine
-    strategy:
-      fail-fast: false
-      matrix:
-        nif: ["2.16"]
-        include:
-          - { target: x86_64-unknown-linux-musl, os: ubuntu-22.04 }
-          - { target: aarch64-unknown-linux-musl, os: ubuntu-24.04-arm }
 
     steps:
       - uses: actions/checkout@v4
@@ -82,15 +75,14 @@ jobs:
       - name: Build NIF
         working-directory: native/ex_gdal_nif
         run: |
-          export RUSTLER_NIF_VERSION=${{ matrix.nif }}
+          export RUSTLER_NIF_VERSION=2.16
           export RUSTFLAGS="-C target-feature=-crt-static"
           cargo build --release
 
       - name: Package artifact
         id: package
         run: |
-          NIF_VERSION=$(echo "${{ matrix.nif }}" | tr '.' '_')
-          FILE_NAME="libex_gdal_nif-v${{ steps.tag.outputs.version }}-nif-${{ matrix.nif }}-${{ matrix.target }}.so.tar.gz"
+          FILE_NAME="libex_gdal_nif-v${{ steps.tag.outputs.version }}-nif-2.16-x86_64-unknown-linux-musl.so.tar.gz"
           cd native/ex_gdal_nif/target/release
           tar -czf "../../../../${FILE_NAME}" libex_gdal_nif.so
           cd ../../../..
