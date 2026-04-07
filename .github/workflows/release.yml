@@ -18,9 +18,8 @@ jobs:
         nif: ["2.16"]
         job:
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
-          - { target: x86_64-unknown-linux-musl, os: ubuntu-22.04, use-cross: true }
+          - { target: x86_64-unknown-linux-musl, os: ubuntu-22.04 }
           - { target: aarch64-unknown-linux-gnu, os: ubuntu-24.04-arm }
-          - { target: aarch64-unknown-linux-musl, os: ubuntu-22.04, use-cross: true }
           - { target: x86_64-apple-darwin, os: macos-14 }
           - { target: aarch64-apple-darwin, os: macos-14 }
 
@@ -30,6 +29,13 @@ jobs:
       - name: Install Rust target (cross-compile)
         if: matrix.job.target == 'x86_64-apple-darwin' && runner.arch == 'ARM64'
         run: rustup target add x86_64-apple-darwin
+
+      - name: Install musl toolchain
+        if: contains(matrix.job.target, 'musl')
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y musl-tools
+          rustup target add ${{ matrix.job.target }}
 
       - name: Get version from tag
         id: tag
