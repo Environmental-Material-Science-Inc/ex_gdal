@@ -18,7 +18,6 @@ jobs:
         nif: ["2.16"]
         job:
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
-          - { target: x86_64-unknown-linux-musl, os: ubuntu-22.04 }
           - { target: aarch64-unknown-linux-gnu, os: ubuntu-24.04-arm }
           - { target: x86_64-apple-darwin, os: macos-14 }
           - { target: aarch64-apple-darwin, os: macos-14 }
@@ -29,14 +28,6 @@ jobs:
       - name: Install Rust target (cross-compile)
         if: matrix.job.target == 'x86_64-apple-darwin' && runner.arch == 'ARM64'
         run: rustup target add x86_64-apple-darwin
-
-      - name: Install musl toolchain
-        if: contains(matrix.job.target, 'musl')
-        run: |
-          sudo apt-get update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y musl-tools
-          rustup target add ${{ matrix.job.target }}
-          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS=-C target-feature=-crt-static" >> $GITHUB_ENV
 
       - name: Get version from tag
         id: tag
@@ -64,3 +55,56 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.build.outputs.file-path }}
+
+  build_musl_nif:
+    name: NIF ${{ matrix.nif }} - ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    container:
+      image: rust:alpine
+    strategy:
+      fail-fast: false
+      matrix:
+        nif: ["2.16"]
+        include:
+          - { target: x86_64-unknown-linux-musl, os: ubuntu-22.04 }
+          - { target: aarch64-unknown-linux-musl, os: ubuntu-24.04-arm }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: apk add --no-cache cmake make g++ musl-dev linux-headers git clang-dev sqlite-dev
+
+      - name: Get version from tag
+        id: tag
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build NIF
+        working-directory: native/ex_gdal_nif
+        run: |
+          export RUSTLER_NIF_VERSION=${{ matrix.nif }}
+          export RUSTFLAGS="-C target-feature=-crt-static"
+          cargo build --release
+
+      - name: Package artifact
+        id: package
+        run: |
+          NIF_VERSION=$(echo "${{ matrix.nif }}" | tr '.' '_')
+          FILE_NAME="libex_gdal_nif-v${{ steps.tag.outputs.version }}-nif-${{ matrix.nif }}-${{ matrix.target }}.so.tar.gz"
+          cd native/ex_gdal_nif/target/release
+          tar -czf "../../../../${FILE_NAME}" libex_gdal_nif.so
+          cd ../../../..
+          echo "file-name=${FILE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "file-path=${FILE_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.file-name }}
+          path: ${{ steps.package.outputs.file-path }}
+          if-no-files-found: error
+
+      - name: Upload to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.package.outputs.file-path }}
