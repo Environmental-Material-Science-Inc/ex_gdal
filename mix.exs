@@ -1,7 +1,7 @@
 defmodule ExGdal.MixProject do
   use Mix.Project
 
-  @version "0.7.9"
+  @version "0.7.10"
 
   def project do
     [
